@@ -5,5 +5,8 @@ package com.miller.springframework.beans;
  * @date 2022/9/5
  * @since 1.0.0
  */
-public class BeansException {
+public class BeansException extends RuntimeException{
+    public BeansException(String message) {
+        super(message);
+    }
 }

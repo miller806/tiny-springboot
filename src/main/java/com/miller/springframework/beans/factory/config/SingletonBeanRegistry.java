@@ -5,5 +5,6 @@ package com.miller.springframework.beans.factory.config;
  * @date 2022/9/5
  * @since 1.0.0
  */
-public class SingletonBeanRegistry {
+public interface SingletonBeanRegistry {
+    Object getSingleton(String beanName);
 }
