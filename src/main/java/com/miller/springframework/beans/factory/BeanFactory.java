@@ -8,7 +8,9 @@ import com.miller.springframework.beans.BeansException;
  * @since 1.0.0
  */
 public interface BeanFactory {
-
     Object getBean(String beanName) throws BeansException;
+
     Object getBean(String beanName, Object... args) throws BeansException;
+
+    <T> T getBean(String beanName, Class<T> type) throws BeansException;
 }

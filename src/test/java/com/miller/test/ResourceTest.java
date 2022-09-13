@@ -42,9 +42,11 @@ public class ResourceTest {
 
     @Test
     void test_url() throws IOException {
-        Resource resource = resourceLoader.getResource("");
+        Resource resource = resourceLoader.getResource("https://udun-prod.oss-cn-hangzhou.aliyuncs.com/important.properties");
         InputStream inputStream = resource.getInputStream();
         String context = IoUtil.readUtf8(inputStream);
         System.out.println(context);
     }
+
+
 }
