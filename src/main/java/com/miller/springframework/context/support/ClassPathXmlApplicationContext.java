@@ -1,5 +1,7 @@
 package com.miller.springframework.context.support;
 
+import com.miller.springframework.beans.BeansException;
+
 /**
  * @author miller
  * @version 1.0.0
@@ -19,5 +21,10 @@ public class ClassPathXmlApplicationContext extends AbstractXmlApplicationContex
     @Override
     protected String[] getConfigurations() {
         return configLocations;
+    }
+
+    @Override
+    public <T> T getBean(Class<T> type) throws BeansException {
+        return getBeanFactory().getBean(type);
     }
 }

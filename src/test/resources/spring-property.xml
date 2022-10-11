@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans>
+    <bean class="com.miller.springframework.beans.factory.PropertyPlaceholderConfigurer">
+        <property name="location" value="classpath:important.properties"/>
+    </bean>
+
+    <bean id="peopleService" class="com.miller.test.bean.PeopleService">
+        <property name="token" value="${token}"/>
+    </bean>
+</beans>

@@ -1,22 +1,24 @@
 package com.miller.springframework.beans.factory.xml;
 
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.core.util.XmlUtil;
 import com.miller.springframework.beans.BeansException;
 import com.miller.springframework.beans.PropertyValue;
 import com.miller.springframework.beans.factory.config.BeanDefinition;
 import com.miller.springframework.beans.factory.config.BeanReference;
 import com.miller.springframework.beans.factory.support.AbstractBeanDefinitionReader;
 import com.miller.springframework.beans.factory.support.BeanDefinitionRegistry;
+import com.miller.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import com.miller.springframework.core.io.Resource;
 import com.miller.springframework.core.io.ResourceLoader;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
+import org.dom4j.Document;
+import org.dom4j.DocumentException;
+import org.dom4j.Element;
+import org.dom4j.io.SAXReader;
+import org.xml.sax.SAXException;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.AnnotatedType;
+import java.util.List;
 
 /**
  * @author miller
@@ -35,7 +37,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
     public void loadBeanDefinitions(Resource resource) {
         try (InputStream inputStream = resource.getInputStream()) {
             doLoadBeanDefinitions(inputStream);
-        } catch (IOException | ClassNotFoundException e) {
+        } catch (IOException | ClassNotFoundException | SAXException e) {
             throw new RuntimeException(e);
         }
     }
@@ -58,28 +60,35 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
         }
     }
 
-    private void doLoadBeanDefinitions(InputStream inputStream) throws ClassNotFoundException {
-        Document doc = XmlUtil.readXML(inputStream);
-        Element root = doc.getDocumentElement();
-        NodeList childNodes = root.getChildNodes();
+    private void doLoadBeanDefinitions(InputStream inputStream) throws SAXException, ClassNotFoundException {
+        SAXReader reader = new SAXReader();
+        reader.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
 
-        for (int i = 0; i < childNodes.getLength(); i++) {
-            //判断元素
-            if (!(childNodes.item(i) instanceof Element)) {
-                continue;
+        Document doc = null;
+        try {
+            doc = reader.read(inputStream);
+        } catch (DocumentException e) {
+            throw new RuntimeException(e);
+        }
+        Element root = doc.getRootElement();
+        List<Element> beanList = root.elements("bean");
+        // 解析context:component-scan 标签，扫描包中的类并提取相关信息，用于组装BeanDefinition
+        Element componentScan = root.element("component-scan");
+        if (null != componentScan) {
+            String scanPath = componentScan.attributeValue("base-package");
+            if (StrUtil.isEmpty(scanPath)) {
+                throw new BeansException("The value of base-package attribute can not be empty or null");
             }
-            //判断对象
-            if (!"bean".equals(childNodes.item(i).getNodeName())) {
-                continue;
-            }
+            scanPackage(scanPath);
+        }
 
-            //解析标签
-            Element bean = (Element) childNodes.item(i);
-            String id = bean.getAttribute("id");
-            String name = bean.getAttribute("name");
-            String className = bean.getAttribute("class");
-            String initMethod = bean.getAttribute("init-method");
-            String destroyMethodName = bean.getAttribute("destroy-method");
+        for (Element bean : beanList) {
+            String id = bean.attributeValue("id");
+            String name = bean.attributeValue("name");
+            String className = bean.attributeValue("class");
+            String initMethod = bean.attributeValue("init-method");
+            String destroyMethodName = bean.attributeValue("destroy-method");
+            String beanScope = bean.attributeValue("scope");
 
             //bean名称
             Class<?> clazz = Class.forName(className);
@@ -93,19 +102,17 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
             beanDefinition.setInitMethodName(initMethod);
             beanDefinition.setDestroyMethodName(destroyMethodName);
 
+            if (StrUtil.isNotEmpty(beanScope)) {
+                beanDefinition.setScope(beanScope);
+            }
+
             //读取属性并填充
-            for (int j = 0; j < bean.getChildNodes().getLength(); j++) {
-                if (!(bean.getChildNodes().item(j) instanceof Element)) {
-                    continue;
-                }
-                if (!"property".equals(bean.getChildNodes().item(j).getNodeName())) {
-                    continue;
-                }
+            List<Element> propertyList = bean.elements("property");
+            for (Element property : propertyList) {
                 //解析标签property
-                Element property = (Element) bean.getChildNodes().item(j);
-                String attrName = property.getAttribute("name");
-                String attrValue = property.getAttribute("value");
-                String attrRef = property.getAttribute("ref");
+                String attrName = property.attributeValue("name");
+                String attrValue = property.attributeValue("value");
+                String attrRef = property.attributeValue("ref");
                 //获取属性值
                 Object value = StrUtil.isNotEmpty(attrRef) ? new BeanReference(attrRef) : attrValue;
                 //创建属性信息
@@ -118,5 +125,11 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
             //注册BeanDefinition
             getRegistry().registerBeanDefinition(beanName, beanDefinition);
         }
+    }
+
+    private void scanPackage(String scanPath) {
+        String[] basePackages = StrUtil.splitToArray(scanPath, ',');
+        ClassPathBeanDefinitionScanner scanner = new ClassPathBeanDefinitionScanner(getRegistry());
+        scanner.doScan(basePackages);
     }
 }

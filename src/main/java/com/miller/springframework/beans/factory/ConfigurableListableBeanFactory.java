@@ -11,8 +11,7 @@ import com.miller.springframework.beans.factory.config.ConfigurableBeanFactory;
  */
 public interface ConfigurableListableBeanFactory extends ListableBeanFactory, AutowireCapableBeanFactory, ConfigurableBeanFactory {
     void preInstantiateSingletons();
+    BeanDefinition getBeanDefinition(String beanName);
 
     void addBeanPostProcessor(BeanPostProcessor beanPostProcessor);
-
-    BeanDefinition getBeanDefinition(String beanName);
 }
